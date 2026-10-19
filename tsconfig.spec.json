@@ -1,0 +1,5 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": { "outDir": "./out-tsc/spec", "types": ["node"] },
+	"include": ["test/**/*.ts", "src/app/core/**/*.ts"]
+}

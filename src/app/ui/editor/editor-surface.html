@@ -1,0 +1,38 @@
+<div class="scroll" #scroll (scroll)="onScroll()">
+	<div class="page">
+		<div class="gutter" #gutter aria-hidden="true" (mousedown)="$event.preventDefault()" (click)="onGutterClick($event)"></div>
+		<div
+			#ed
+			class="ed"
+			[class.f-sec]="editor.layer() === 'section'"
+			[class.f-para]="editor.layer() === 'paragraph'"
+			[class.f-sent]="editor.layer() === 'sentence'"
+			contenteditable="true"
+			[spellcheck]="settings.editor().spellcheck"
+			[attr.lang]="editor.textLang() || null"
+			role="textbox"
+			aria-multiline="true"
+			aria-label="Manuscript"
+			[attr.data-hint]="hint"
+			(input)="onInput($event)"
+			(paste)="onPaste($event)"
+			(pointerdown)="onPointerDown()"
+			(click)="onClick($event)"></div>
+	</div>
+</div>
+
+@if (bubble(); as b) {
+	<div class="bubble" role="toolbar" aria-label="Formatting" [style.left.px]="b.left" [style.top.px]="b.top" (mousedown)="$event.preventDefault()">
+		<button type="button" title="Bold" (click)="format('bold')"><b>B</b></button>
+		<button type="button" title="Italic" (click)="format('italic')"><i>I</i></button>
+		<button type="button" title="Link" (click)="link()">Link</button>
+		<span class="sep"></span>
+		<button type="button" title="Heading 1" [class.on]="editor.blockType() === 'h1'" (click)="editor.changeBlockType('h1')">H1</button>
+		<button type="button" title="Heading 2" [class.on]="editor.blockType() === 'h2'" (click)="editor.changeBlockType('h2')">H2</button>
+		<button type="button" title="Heading 3" [class.on]="editor.blockType() === 'h3'" (click)="editor.changeBlockType('h3')">H3</button>
+		<button type="button" title="Paragraph" [class.on]="editor.blockType() === 'p'" (click)="editor.changeBlockType('p')">¶</button>
+		<span class="sep"></span>
+		<button type="button" title="Bulleted list" [class.on]="editor.blockType() === 'ul'" (click)="editor.changeBlockType('ul')">•</button>
+		<button type="button" title="Numbered list" [class.on]="editor.blockType() === 'ol'" (click)="editor.changeBlockType('ol')">1.</button>
+	</div>
+}

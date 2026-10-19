@@ -1,0 +1,80 @@
+<div class="desk-tabs" role="tablist">
+	@for (t of tabs; track t.id) {
+		<button type="button" class="tab" role="tab" [attr.aria-selected]="ui.deskTab() === t.id" (click)="select(t.id)">{{ t.label }}</button>
+	}
+	<span class="grow"></span>
+	<button class="ib" type="button" [title]="settings.editor().deskFolded ? 'Unfold the desk' : 'Fold the desk'" (click)="toggleFold()"><svg class="i" aria-hidden="true"><use href="#i-down"></use></svg></button>
+</div>
+
+<div class="desk-body" role="tabpanel">
+	@switch (ui.deskTab()) {
+		@case ('line') {
+			@if (line().section; as s) {
+				<div class="block">
+					<h3>{{ s.title }}</h3>
+					@if (s.empty) {
+						<p class="muted">This part has no paragraphs of its own yet.</p>
+					} @else if (s.reading; as r) {
+						@if (r.cohesion !== null) { <div class="verdict"><span class="meter big"><i [style.width.%]="r.cohesion"></i></span>{{ verdict(r.cohesion) }}, {{ r.cohesion }} of 100</div> }
+						@if (r.line) { <p class="says">{{ r.line }}</p> }
+						@if (s.breaks.length) {
+							<p class="small muted gap">Where the line breaks</p>
+							<ul class="jumps">
+								@for (b of s.breaks; track b.n) { <li><button type="button" [title]="'Go to paragraph ' + b.n" (click)="jump(b.bid)">¶ {{ b.n }}</button> {{ b.note }}</li> }
+							</ul>
+						}
+						@if (s.stale) { <p class="stale">This reading is from an earlier version of the section. A fresh one follows when you pause.</p> }
+					} @else {
+						<p class="muted">{{ hint() }}</p>
+					}
+				</div>
+			}
+			@if (line().doc; as d) {
+				<div class="block">
+					<h3>Whole text</h3>
+					@if (d.cohesion !== null) { <div class="verdict"><span class="meter big"><i [style.width.%]="d.cohesion"></i></span>{{ verdict(d.cohesion) }}, {{ d.cohesion }} of 100</div> }
+					@if (d.stale) { <p class="stale">From an earlier version.</p> }
+				</div>
+			} @else if (line().docPending) {
+				<div class="block"><h3>Whole text</h3><p class="muted">The whole text is read once every section has been read.</p></div>
+			}
+		}
+		@case ('notes') {
+			@if (notes().visible.length) {
+				<ul class="notes">
+					@for (n of notes().visible; track n.id) {
+						<li [class]="'k-' + n.kind">
+							<span class="kind">{{ n.label }}@if (n.sectionTitle) {<span>, {{ n.sectionTitle }}</span>}</span>
+							<p>{{ n.text }}</p>
+							<div class="acts">
+								@if (n.section !== null) { <button type="button" (click)="jumpToSection(n.section)">Go there</button> }
+								<button type="button" (click)="hide(n.id)">Hide</button>
+							</div>
+						</li>
+					}
+				</ul>
+				@if (notes().stale) { <p class="stale">From an earlier reading of the text.</p> }
+			} @else {
+				<p class="muted">{{ notes().total ? 'All notes are hidden.' : hint() + ' Notes on structure, ideas, sources and likely objections appear here.' }}</p>
+			}
+		}
+		@case ('ask') {
+			@if (ui.chat().length) {
+				<div class="chat">
+					@for (m of ui.chat(); track $index) {
+						<div class="msg" [class.user]="m.role === 'user'" [class.ai]="m.role === 'assistant'" [class.wait]="m.pending && !m.text">{{ m.pending && !m.text ? 'Thinking…' : m.text }}</div>
+					}
+				</div>
+			} @else {
+				<p class="muted">Ask about the text: whether an argument holds, what is missing, which sources might help. The model sees your outline and the section you are in.</p>
+			}
+		}
+	}
+</div>
+
+@if (ui.deskTab() === 'ask') {
+	<div class="ask-row">
+		<textarea #q rows="1" aria-label="Question about the text" placeholder="Ask about the text" (keydown)="onKey($event, q)" (input)="grow(q)"></textarea>
+		<button class="btn primary" type="button" (click)="send(q)">Ask</button>
+	</div>
+}

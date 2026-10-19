@@ -1,0 +1,27 @@
+<button class="ib" type="button" title="Show or hide the map (Ctrl+\)" [attr.aria-pressed]="!settings.editor().zen && settings.editor().mapOpen" (click)="toggleMap()"><svg class="i" aria-hidden="true"><use href="#i-map"></use></svg></button>
+<nav class="crumbs" aria-label="Where you are">
+	@for (c of crumbs(); track c.layer; let first = $first) {
+		@if (!first) { <span class="sep">›</span> }
+		@if (c.layer === 'section') {
+			@for (t of context(); track $index) { <span class="ctx" [title]="t">{{ t }}</span><span class="sep">›</span> }
+		}
+		<button type="button" class="crumb" [attr.data-layer]="c.layer" [class.on]="editor.layer() === c.layer" [title]="layerTitle[c.layer]" (click)="setLayer(c.layer)">{{ c.label }}</button>
+	}
+</nav>
+<div class="tools">
+	@if (saveState(); as st) {
+		<button class="save-state" type="button" [class.dirty]="st.dirty" [class.warn]="st.warn" [title]="st.title" (click)="files.save()"><span class="dot"></span><span class="txt">{{ st.text }}</span></button>
+	}
+	<select #type aria-label="Paragraph type" title="Paragraph type" [value]="editor.blockType()" (change)="setType(type.value)">
+		<option value="p">Paragraph</option>
+		<option value="h1">Heading 1</option>
+		<option value="h2">Heading 2</option>
+		<option value="h3">Heading 3</option>
+		<option value="ul">Bulleted list</option>
+		<option value="ol">Numbered list</option>
+	</select>
+	<button class="tb" type="button" title="Inspect this paragraph (Ctrl+.)" [attr.aria-pressed]="editor.lensOpen()" (click)="toggleLens()"><svg class="i" aria-hidden="true"><use href="#i-lens"></use></svg>Lens</button>
+	<button class="ai-status" type="button" [class.ok]="status().kind === 'ok'" [class.busy]="status().kind === 'busy'" [class.err]="status().kind === 'err'" [title]="status().title" (click)="ui.openSettings('ai')"><span class="dot"></span><span class="txt">{{ status().text }}</span></button>
+	<button class="ib" type="button" [title]="settings.editor().zen ? 'Leave focus mode and show the side panels (' + mod + '+Shift+F)' : 'Focus mode: fold away both side panels (' + mod + '+Shift+F)'" [attr.aria-pressed]="settings.editor().zen" (click)="ui.toggleZen()"><svg class="i" aria-hidden="true"><use [attr.href]="settings.editor().zen ? '#i-unzen' : '#i-zen'"></use></svg></button>
+	<button class="ib" type="button" title="Settings" (click)="ui.openSettings()"><svg class="i" aria-hidden="true"><use href="#i-gear"></use></svg></button>
+</div>

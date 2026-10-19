@@ -1,0 +1,10 @@
+<tl-map [class.overlay]="ui.narrow()" />
+<main id="main" (pointerdown)="onMainPointer()">
+	<tl-top-bar />
+	<tl-notices />
+	<tl-editor />
+</main>
+<tl-lens />
+<tl-settings />
+<input #fileInput type="file" accept=".docx,.odt,.md,.markdown,.txt" hidden (change)="onFileChosen(fileInput)">
+@if (dragging()) { <div class="drop">Drop to open</div> }

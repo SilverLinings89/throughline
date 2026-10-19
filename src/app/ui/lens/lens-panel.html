@@ -1,0 +1,80 @@
+<div class="lens-in">
+	<div class="lens-head">
+		<div class="grow">
+			<h2>{{ view() ? 'Paragraph ' + view()!.block.n : 'Lens' }}</h2>
+			@if (view()?.section; as s) { <div class="where">{{ s.head !== null ? s.title : 'Opening' }}</div> }
+		</div>
+		<button class="ib" type="button" title="Close (Esc)" (click)="close()"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg></button>
+	</div>
+
+	@if (view(); as v) {
+		@if (!v.block.paraKey) {
+			<p class="state">Short paragraphs are not sent to the model.</p>
+		} @else if (!v.para) {
+			<p class="state">{{ v.running ? 'The model is reading this paragraph.' : ready() ? 'It is read once you pause here.' : 'Choose a model in the settings to get suggestions here.' }}</p>
+		} @else if (v.para.stale) {
+			<p class="state">{{ v.running ? 'Reading your latest version.' : 'Edited since the last reading.' }} Suggestions below still point at the text that is unchanged.</p>
+		}
+
+		@if (v.para; as p) {
+			@if (p.reading.gist) { <p class="gist-line">{{ p.reading.gist }}</p> }
+			@if (p.reading.flow) { <p class="flow">{{ p.reading.flow }}</p> }
+		}
+
+		@if (v.scores.length) {
+			<div class="scores">
+				@for (s of v.scores; track s.label) {
+					<span class="s">{{ s.label }}</span>
+					<span class="v"><span class="pips" [attr.aria-label]="s.value + ' of 5'">@for (on of pips(s.value); track $index) {<i [class.on]="on"></i>}</span>@if (s.note) {<span class="note">{{ s.note }}</span>}</span>
+				}
+			</div>
+		}
+
+		@if (v.filters.length) {
+			<div class="filters">
+				@for (f of v.filters; track f.key) {
+					<button type="button" [class]="'c-' + f.key" [attr.aria-pressed]="f.on" (click)="toggle(f.key)"><i></i>{{ f.label }} {{ f.count }}</button>
+				}
+			</div>
+		}
+
+		@for (i of v.shown; track i.id) {
+			<div class="issue" [class]="'issue c-' + i.type + ' t-' + i.type" [class.on]="editor.hoverIssue() === i.id" (mouseenter)="hover(i.id)" (mouseleave)="hover(null)" (mousedown)="$event.preventDefault()" (click)="show(i)">
+				<div class="q">{{ i.quote }}</div>
+				@if (i.suggestion && i.type !== 'cut') { <div class="sg">{{ i.suggestion }}</div> }
+				@if (i.note) { <div class="why">{{ i.note }}</div> }
+				<div class="acts">
+					@if (canApply(i)) { <button type="button" class="btn" (click)="$event.stopPropagation(); apply(i)">{{ i.type === 'cut' ? 'Delete' : 'Replace' }}</button> }
+					<button type="button" class="btn quiet" (click)="$event.stopPropagation(); ignore(i)">Ignore</button>
+				</div>
+			</div>
+		} @empty {
+			@if (v.para && !v.para.stale) { <p class="muted">No line edits suggested.</p> }
+		}
+
+		@if (v.repeats.length || v.checks.doubled.length || v.checks.long.length) {
+			<h3>Quick checks</h3>
+			<ul class="checks">
+				@for (r of v.repeats; track r.word) { <li><b>{{ r.word }}</b> appears {{ r.spans.length }} times close together.</li> }
+				@for (d of v.checks.doubled; track d.start) { <li>Doubled word: <b>{{ d.word }}</b>.</li> }
+				@for (s of v.checks.long; track s.start) { <li>A sentence runs to {{ s.words }} words.</li> }
+			</ul>
+		}
+
+		@if (v.sentences.length > 1) {
+			<h3>Sentences</h3>
+			<ol class="sents">
+				@for (s of v.sentences; track s.start) {
+					<li [class.long]="s.words > long" [class.here]="s.i === sentenceIndex()" (mousedown)="$event.preventDefault()" (click)="selectSentence(s.i)">
+						<span class="st">{{ s.text.trim() }}</span>
+						<span class="w"><span class="wc" [style.width.px]="s.bar"></span><span class="wn">{{ s.words }}</span></span>
+					</li>
+				}
+			</ol>
+		}
+
+		@if (v.block.paraKey && ready()) { <div class="foot"><button type="button" class="btn" (click)="readAgain()">Read this paragraph again</button></div> }
+	} @else {
+		<p class="state">Put the cursor in a paragraph to look at it closely.</p>
+	}
+</div>

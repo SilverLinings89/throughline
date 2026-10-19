@@ -1,0 +1,58 @@
+<div class="map-head">
+	<button class="ib" type="button" title="New document" (click)="files.newDocument()"><svg class="i" aria-hidden="true"><use href="#i-new"></use></svg></button>
+	<button class="ib" type="button" title="Open a file (Ctrl+O)" (click)="files.pick()"><svg class="i" aria-hidden="true"><use href="#i-open"></use></svg></button>
+	<button class="ib" type="button" title="Save (Ctrl+S)" (click)="files.save()"><svg class="i" aria-hidden="true"><use href="#i-save"></use></svg></button>
+	<button class="ib" type="button" title="Save as another format" [attr.aria-expanded]="menuOpen()" (click)="menuOpen.set(!menuOpen())"><svg class="i" aria-hidden="true"><use href="#i-more"></use></svg></button>
+	<span class="fname">{{ docs.file().name || 'Not saved yet' }}@if (docs.dirty()) { <span class="unsaved" title="Unsaved changes"> edited</span> }</span>
+</div>
+@if (menuOpen()) {
+	<div class="menu inline" role="menu">
+		@for (f of formats; track f.format) { <button type="button" role="menuitem" (click)="saveAs(f.format)">{{ f.label }}</button> }
+	</div>
+}
+
+<button class="doc-title" type="button" title="Document settings" (click)="ui.openSettings('doc')">{{ editor.title() }}</button>
+
+<div class="thread-box">
+	@if (thread().own) {
+		<div class="lbl">Your line</div>
+		<p>{{ thread().own }}</p>
+		@if (thread().reads) { <div class="lbl later">How the text reads now</div><p class="muted">{{ thread().reads }}</p> }
+	} @else if (thread().reads) {
+		<div class="lbl">How the text reads now</div>
+		<p>{{ thread().reads }}</p>
+		<div class="acts">
+			<button class="link" type="button" (click)="adoptThread()">Make this my line</button>
+			<button class="link" type="button" (click)="ui.openSettings('doc')">Write my own</button>
+		</div>
+	} @else {
+		<button class="link" type="button" (click)="ui.openSettings('doc')">State the main line of your text</button>
+	}
+</div>
+
+<nav class="outline" aria-label="Outline">
+	@if (fewParagraphs()) {
+		<p class="empty">Your headings appear here as a map. Start a line with # and a space to make one.</p>
+		<p class="empty"><button class="link" type="button" (click)="files.loadSample()">Load a sample text</button> to see how it works.</p>
+	} @else {
+		@for (n of nodes(); track n.index) {
+			<button type="button" class="node" [class.l1]="n.level === 1" [class.here]="n.here" [class.on-path]="n.onPath" [style.--ind]="n.indent + 'px'" (click)="jumpToSection(n.index)">
+				<span class="knot"></span>
+				<span class="t">{{ n.title }}</span>
+				@if (n.keywords) { <span class="kw" [class.stale]="n.stale">{{ n.keywords }}</span> }
+				@if (n.cohesion !== null) { <span class="meter" [title]="'Cohesion ' + n.cohesion + ' of 100'"><i [style.width.%]="n.cohesion"></i></span> }
+			</button>
+			@if (n.gists.length) {
+				<ol class="gists">
+					@for (g of n.gists; track g.bid) {
+						<li class="gist" [class.done]="g.done" [class.weak]="g.weak" [class.off]="g.off" [class.here]="g.here" [style.--ind]="g.indent + 'px'" [title]="g.tip" (click)="go(g.bid)">
+							<span class="bead"></span><span class="gt" [class.raw]="g.raw">{{ g.text }}</span>
+						</li>
+					}
+				</ol>
+			}
+		}
+	}
+</nav>
+
+<tl-desk />

@@ -1,0 +1,172 @@
+<dialog #dialog aria-label="Settings" (close)="onClose()" (click)="onBackdrop($event)">
+	<div class="dlg">
+		<div class="dlg-head" role="tablist">
+			@for (t of tabs; track t.id) { <button type="button" class="tab" role="tab" [attr.aria-selected]="ui.settingsTab() === t.id" (click)="ui.settingsTab.set(t.id)">{{ t.label }}</button> }
+			<span class="grow"></span>
+			<button class="ib" type="button" title="Close" (click)="ui.settingsTab.set(null)"><svg class="i" aria-hidden="true"><use href="#i-x"></use></svg></button>
+		</div>
+		<div class="dlg-body">
+			@switch (ui.settingsTab()) {
+				@case ('doc') {
+					<div class="field"><label for="s-title">Title</label><input #title id="s-title" type="text" [value]="docs.settings().title" [placeholder]="editor.title()" (input)="setDoc({ title: title.value })"></div>
+					<div class="field">
+						<label for="s-thread">Main line of thought</label>
+						<textarea #thread id="s-thread" rows="3" placeholder="In one or two sentences: what every part of this text should serve." [value]="docs.settings().thread" (input)="setDoc({ thread: thread.value })"></textarea>
+						<p class="help">Section and document readings check the text against this line. Leave it empty and the model tells you the line it finds.</p>
+					</div>
+					<div class="field">
+						<label for="s-style">Style guide</label>
+						<textarea #styleGuide id="s-style" rows="5" placeholder="Tone, audience, rules you want to keep. Every paragraph is checked against this." [value]="docs.settings().style" (input)="setDoc({ style: styleGuide.value })"></textarea>
+						<div class="chips">@for (p of stylePresets; track p.name) { <button type="button" (click)="setDoc({ style: p.text })">{{ p.name }}</button> }</div>
+					</div>
+					<div class="field row">
+						<div>
+							<label class="lbl" for="s-textlang">Language of the text</label>
+							<select #textLang id="s-textlang" (change)="setDoc({ textLang: textLang.value })">
+								<option value="" [selected]="!docs.settings().textLang">{{ detectedLabel() }}</option>
+								@for (l of textLanguages(); track l.code) { <option [value]="l.code" [selected]="l.code === docs.settings().textLang">{{ l.name }}</option> }
+							</select>
+						</div>
+						<div>
+							<label class="lbl" for="s-lang">Language of the feedback</label>
+							<input #lang id="s-lang" type="text" placeholder="Same as the text" [value]="docs.settings().language" (input)="setDoc({ language: lang.value })">
+						</div>
+					</div>
+					<p class="muted small">The browser checks spelling in the language of the text, if its dictionary is installed. In Chrome and Edge, add the language under Settings, Languages, Spell check. Firefox needs the dictionary add-on; Safari follows the languages of macOS. You can also switch spell checking off in the Editor tab. Feedback is written in the language you name on the right, for example English or Deutsch.</p>
+					<label class="check"><input #embed type="checkbox" [checked]="settings.editor().embed" (change)="setEditor({ embed: embed.checked })"><span>Keep these settings and the model's readings inside the file, so they travel with it and are not computed again. In .docx they sit in a custom XML part that Word keeps; in .odt in an extra file in the package.</span></label>
+				}
+				@case ('ai') {
+					<label class="check"><input #on type="checkbox" [checked]="settings.ai().enabled" (change)="setAi({ enabled: on.checked })"><span>Read the text in the background</span></label>
+					<div class="field">
+						<label for="s-url">Server address (OpenAI-compatible)</label>
+						<input #url id="s-url" type="url" [value]="settings.ai().baseUrl" (change)="setServer({ baseUrl: url.value })">
+						<div class="chips">@for (p of serverPresets; track p.name) { <button type="button" (click)="setServer({ baseUrl: p.url })">{{ p.name }}</button> }</div>
+						<p class="help">The browser talks to this server directly. The server must allow requests from this page's address (CORS). See the setup guide in the documentation.</p>
+					</div>
+					<div class="field">
+						<label for="s-model">Model</label>
+						@if (models().length && !manualModel()) {
+							<select #pick id="s-model" (change)="setAi({ model: pick.value })">
+								@if (!settings.ai().model) { <option value="" selected disabled>Choose one of {{ models().length }} models</option> }
+								@for (m of modelOptions(); track m.id) { <option [value]="m.id" [selected]="m.id === settings.ai().model">{{ m.label }}</option> }
+							</select>
+						} @else {
+							<input #model id="s-model" type="text" list="model-list" placeholder="for example qwen3:14b or gemma3:12b" [value]="settings.ai().model" (change)="setAi({ model: model.value })">
+							<datalist id="model-list">@for (m of models(); track m) { <option [value]="m"></option> }</datalist>
+						}
+						<div class="row-actions">
+							<button type="button" class="btn" (click)="test()">{{ models().length ? 'Check again' : 'Check connection' }}</button>
+							@if (models().length) { <button type="button" class="btn quiet" (click)="manualModel.set(!manualModel())">{{ manualModel() ? 'Pick from the list' : 'Type a name' }}</button> }
+							@if (testResult(); as r) { <span class="test-out" [class.bad]="!r.ok">{{ r.text }}</span> }
+						</div>
+					</div>
+					<div class="field"><label for="s-key">API key</label><input #key id="s-key" type="password" autocomplete="off" placeholder="Usually empty for local servers" [value]="settings.ai().apiKey" (change)="setServer({ apiKey: key.value })"></div>
+					<div class="field row3">
+						<div><label class="lbl" for="s-temp">Temperature</label><input #temp id="s-temp" type="number" step="0.1" min="0" max="2" [value]="settings.ai().temperature" (change)="setAi({ temperature: num(temp.value) })"></div>
+						<div><label class="lbl" for="s-conc">Requests at once</label><input #conc id="s-conc" type="number" min="1" max="8" [value]="settings.ai().concurrency" (change)="setAi({ concurrency: num(conc.value) })"></div>
+						<div><label class="lbl" for="s-to">Time limit (s)</label><input #to id="s-to" type="number" min="20" max="1800" [value]="settings.ai().timeoutSec" (change)="setAi({ timeoutSec: num(to.value) })"></div>
+					</div>
+					<div class="field row">
+						<div><label class="lbl" for="s-fmt">Structured answers</label><select #fmt id="s-fmt" (change)="setAi({ structured: mode(fmt.value) })">@for (m of modes; track m.id) { <option [value]="m.id" [selected]="m.id === settings.ai().structured">{{ m.label }}</option> }</select></div>
+						<div><label class="lbl" for="s-budget">Text per section request (characters)</label><input #budget id="s-budget" type="number" min="2000" max="200000" step="1000" [value]="settings.ai().budget" (change)="setAi({ budget: num(budget.value) })"></div>
+					</div>
+					<div class="field row">
+						<div><label class="lbl" for="s-delay">Wait before reading the paragraph you are in (s)</label><input #delay id="s-delay" type="number" min="1" max="60" [value]="settings.ai().paraDelaySec" (change)="setAi({ paraDelaySec: num(delay.value) })"></div>
+						<div><label class="lbl" for="s-max">Answer length limit (tokens, 0 = automatic)</label><input #max id="s-max" type="number" min="0" max="32000" step="256" [value]="settings.ai().maxTokens" (change)="setAi({ maxTokens: num(max.value) })"></div>
+					</div>
+					<label class="check"><input #hold type="checkbox" [checked]="settings.ai().pauseWhileTyping" (change)="setAi({ pauseWhileTyping: hold.checked })"><span>Start no new requests while you type</span></label>
+					<h4>Stored readings</h4>
+					<p class="muted small">Readings are stored by the exact text they belong to, so a paragraph is never read twice, even across files.</p>
+					<button type="button" class="btn" (click)="forget()">Forget all stored readings</button>
+				}
+				@case ('usage') {
+					@let u = usage();
+					<div class="usage-head">
+						<p class="muted small grow">How long the model takes and how many tokens it uses. Use it to decide whether a smaller or a larger model fits your machine. Stored only in this browser.</p>
+						<select #scope aria-label="Which requests" (change)="setScope(scope.value)">
+							<option value="session" [selected]="usageScope() === 'session'">This session</option>
+							<option value="all" [selected]="usageScope() === 'all'">Everything recorded{{ u.since ? ' (since ' + u.since + ')' : '' }}</option>
+						</select>
+					</div>
+					@if (!u.total) {
+						<p class="muted">No requests yet{{ usageScope() === 'session' ? ' in this session' : '' }}. Measurements appear as soon as the model reads something.</p>
+					} @else {
+						@if (u.model) {
+							<h4>{{ u.model }}: what the numbers suggest</h4>
+							<ul class="advice">@for (a of u.advice; track $index) { <li>{{ a }}</li> }</ul>
+						}
+						<h4>By model</h4>
+						<div class="tbl-wrap">
+							<table class="tbl">
+								<thead><tr><th>Model</th><th>Requests</th><th>Median</th><th>90 %</th><th>Waited</th><th>Tokens in / out (avg)</th><th>Tokens/s</th><th>Unusable</th><th>Failed</th></tr></thead>
+								<tbody>
+									@for (r of u.models; track r.label) {
+										<tr [class.cur]="r.label === u.model">
+											<td class="name">{{ r.label }}</td><td>{{ r.s.requests }}</td><td>{{ seconds(r.s.medianMs) }}</td><td>{{ seconds(r.s.p90Ms) }}</td><td>{{ seconds(r.s.medianWaitMs) }}</td>
+											<td>{{ tokens(r.s.avgPromptTokens) }} / {{ tokens(r.s.avgCompletionTokens) }}</td><td>{{ r.s.tokensPerSec === null ? '–' : r.s.tokensPerSec.toFixed(1) }}</td>
+											<td>{{ percent(r.s.invalid, r.s.ok + r.s.invalid) }}</td><td>{{ r.s.failed }}</td>
+										</tr>
+									}
+								</tbody>
+							</table>
+						</div>
+						@if (u.kinds.length) {
+							<h4>{{ u.model }} by kind of request</h4>
+							<div class="tbl-wrap">
+								<table class="tbl">
+									<thead><tr><th>Kind</th><th>Requests</th><th>Median</th><th>90 %</th><th>Tokens in / out (avg)</th><th>Tokens in / out (total)</th><th>Dropped</th></tr></thead>
+									<tbody>
+										@for (r of u.kinds; track r.label) {
+											<tr><td class="name">{{ r.label }}</td><td>{{ r.s.requests }}</td><td>{{ seconds(r.s.medianMs) }}</td><td>{{ seconds(r.s.p90Ms) }}</td><td>{{ tokens(r.s.avgPromptTokens) }} / {{ tokens(r.s.avgCompletionTokens) }}</td><td>{{ tokens(r.s.promptTokens) }} / {{ tokens(r.s.completionTokens) }}</td><td>{{ r.s.dropped }}</td></tr>
+										}
+									</tbody>
+								</table>
+							</div>
+						}
+						<h4>Latest requests</h4>
+						<div class="tbl-wrap">
+							<table class="tbl">
+								<thead><tr><th>Time</th><th>Kind</th><th>Model</th><th>Took</th><th>Waited</th><th>Tokens in → out</th><th>Result</th></tr></thead>
+								<tbody>
+									@for (r of u.recent; track $index) {
+										<tr><td>{{ r.time }}</td><td>{{ r.kind }}</td><td class="name">{{ r.model }}</td><td>{{ seconds(r.ms) }}</td><td>{{ seconds(r.wait) }}</td><td>{{ r.tokens }}</td><td [class.bad]="r.bad">{{ r.outcome }}</td></tr>
+									}
+								</tbody>
+							</table>
+						</div>
+						<p class="help">Median and 90 %: time from sending a request to the full answer; nine in ten requests were faster than the 90 % value. Waited: time in the queue before sending. Tokens/s: answer tokens per second, including the time the model spends reading the prompt. Unusable: answers that arrived but were not valid JSON in the expected shape. Dropped: requests cancelled because the text changed, or interrupted for something more urgent.@if (u.estimated) { Values marked ≈ are estimated from the text length (about four characters per token), because the server did not report token counts.}</p>
+					}
+					<div class="row-actions">
+						<button type="button" class="btn" [disabled]="!ai.metrics().length" (click)="copyCsv()">Copy as CSV</button>
+						<button type="button" class="btn quiet" [disabled]="!ai.metrics().length" (click)="clearUsage()">Delete measurements</button>
+					</div>
+				}
+				@case ('editor') {
+					<div class="field row">
+						<div><label class="lbl" for="s-focus">Dimming around your focus</label><select #focus id="s-focus" [value]="settings.editor().focus" (change)="setEditor({ focus: focusMode(focus.value) })"><option value="soft">Soft</option><option value="strong">Strong</option></select></div>
+						<div><label class="lbl" for="s-theme">Appearance</label><select #th id="s-theme" [value]="settings.editor().theme" (change)="setEditor({ theme: theme(th.value) })"><option value="auto">Follow the system</option><option value="light">Light</option><option value="dark">Dark</option></select></div>
+					</div>
+					<div class="field row">
+						<div><label class="lbl" for="s-fs">Text size ({{ settings.editor().fontSize }}px)</label><input #fs id="s-fs" type="range" min="15" max="28" [value]="settings.editor().fontSize" (input)="setEditor({ fontSize: num(fs.value) })"></div>
+						<div><label class="lbl" for="s-ms">Line length ({{ settings.editor().measure }} em)</label><input #ms id="s-ms" type="range" min="26" max="46" [value]="settings.editor().measure" (input)="setEditor({ measure: num(ms.value) })"></div>
+					</div>
+					<label class="check"><input #tw type="checkbox" [checked]="settings.editor().typewriter" (change)="setEditor({ typewriter: tw.checked })"><span>Keep the line you write near the middle of the screen</span></label>
+					<label class="check"><input #spell type="checkbox" [checked]="settings.editor().spellcheck" (change)="setEditor({ spellcheck: spell.checked })"><span>Mark spelling mistakes (uses the browser's dictionary for the language set under This document)</span></label>
+					<label class="check"><input #gut type="checkbox" [checked]="settings.editor().gutter" (change)="setEditor({ gutter: gut.checked })"><span>Show the thread in the margin</span></label>
+					<dl class="legend" aria-label="What the marks in the margin mean">
+						<dt><span class="k done"></span></dt><dd>Paragraph read by the model.</dd>
+						<dt><span class="k stale"></span></dt><dd>Edited since it was read. A new reading follows when you pause.</dd>
+						<dt><span class="k"></span></dt><dd>Not read yet. A paragraph is read when the cursor rests in it.</dd>
+						<dt><span class="k run"></span></dt><dd>The model is reading it now.</dd>
+						<dt><span class="k done off"></span></dt><dd>Moved off the line: the paragraph strays from its section.</dd>
+						<dt><span class="seg weak"></span></dt><dd>Dashed line: weak link to the paragraph before.</dd>
+						<dt><span class="n">3</span></dt><dd>Number of suggested edits. Click it to open them in the lens.</dd>
+						<dt><span class="k head"></span></dt><dd>Heading.</dd>
+					</dl>
+					<h4>Keys</h4>
+					<p class="small muted keys">{{ mod }}+S save, {{ mod }}+O open, {{ mod }}+. lens, {{ mod }}+\ map, {{ mod }}+Shift+F focus mode (hides both side panels), {{ mod }}+K link. Ctrl+Shift+1 to 4 switch between document, section, paragraph and sentence. At the start of a paragraph, # ## ### make headings, - and 1. make lists.</p>
+				}
+			}
+		</div>
+	</div>
+</dialog>

@@ -1,0 +1,5 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": { "outDir": "./out-tsc/worker", "lib": ["ES2023", "WebWorker"], "types": [] },
+	"include": ["src/app/workers/**/*.ts"]
+}
